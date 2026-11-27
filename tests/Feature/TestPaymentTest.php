@@ -15,12 +15,12 @@ class TestPaymentTest extends TestCase
     public function test_stripe_test_checkout_grants_access_after_provider_confirmation(): void
     {
         config(['test-payments.enabled' => true, 'test-payments.stripe' => [
-            'key' => 'sk_test_example', 'price' => 'price_example', 'webhook_secret' => 'whsec_teststripe1234',
+            'key' => 'rk_test_example', 'price' => 'price_example', 'webhook_secret' => 'whsec_teststripe1234',
         ]]);
         $this->signIn();
         $price = ['id' => 'price_example', 'active' => true, 'livemode' => false, 'currency' => 'usd', 'unit_amount' => 2000,
             'recurring' => ['interval' => 'year', 'interval_count' => 1]];
-        $status = 'active';
+        $status = 'incomplete';
         Http::preventStrayRequests();
         Http::fake([
             'api.stripe.com/v1/prices/price_example' => Http::response($price),
@@ -39,6 +39,9 @@ class TestPaymentTest extends TestCase
         $this->getJson('/api/v1/me')->assertJsonPath('pro', false);
         $this->stripeEvent('checkout.session.completed', ['subscription' => 'sub_stripe'], 'wrong')->assertUnauthorized();
         $this->stripeEvent('checkout.session.completed', ['subscription' => 'sub_stripe'], 'whsec_teststripe1234')->assertOk();
+        $this->getJson('/api/v1/me')->assertJsonPath('pro', false);
+        $status = 'active';
+        $this->stripeEvent('checkout.session.async_payment_succeeded', ['subscription' => 'sub_stripe'], 'whsec_teststripe1234')->assertOk();
         $this->getJson('/api/v1/me')->assertJsonPath('pro', true);
         $status = 'canceled';
         $this->stripeEvent('customer.subscription.deleted', ['id' => 'sub_stripe'], 'whsec_teststripe1234')->assertOk();

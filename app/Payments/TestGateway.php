@@ -13,12 +13,14 @@ enum TestGateway: string
     case Stripe = 'stripe';
     case Razorpay = 'razorpay';
 
+    private const STRIPE_API_VERSION = '2026-11-18.endive';
+
     public function ready(): bool
     {
         $settings = $this->settings();
 
         return config('test-payments.enabled')
-            && preg_match($this === self::Stripe ? '/^sk_test_[A-Za-z0-9]+$/D' : '/^rzp_test_[A-Za-z0-9]+$/D', (string) $settings['key']) === 1
+            && preg_match($this === self::Stripe ? '/^(?:rk|sk)_test_[A-Za-z0-9]+$/D' : '/^rzp_test_[A-Za-z0-9]+$/D', (string) $settings['key']) === 1
             && preg_match($this === self::Stripe ? '/^price_[A-Za-z0-9]+$/D' : '/^plan_[A-Za-z0-9]+$/D', (string) $settings['price']) === 1
             && strlen((string) $settings['webhook_secret']) >= 16
             && ($this === self::Stripe || filled($settings['secret']));
@@ -32,7 +34,8 @@ enum TestGateway: string
         if ($this === self::Stripe) {
             $home = rtrim(config('app.url'), '/');
             $data = $this->api('checkout/sessions', [
-                'mode' => 'subscription', 'payment_method_types' => ['card'],
+                'mode' => 'subscription', 'integration_identifier' => 'framekeep-yearly-qbfmzdjw',
+                'adaptive_pricing' => ['enabled' => false],
                 'customer_email' => $user->email, 'line_items' => [['price' => $price, 'quantity' => 1]],
                 'subscription_data' => ['metadata' => ['framekeep_checkout' => $checkout->id]],
                 'success_url' => $home.'/?payment=awaiting', 'cancel_url' => $home.'/?payment=cancelled',
@@ -77,7 +80,8 @@ enum TestGateway: string
             abort_unless(is_array($event) && ($event['livemode'] ?? null) === false, 400);
             $data = $event['data']['object'] ?? [];
             $id = match ($event['type'] ?? null) {
-                'checkout.session.completed' => $data['subscription'] ?? null,
+                'checkout.session.completed', 'checkout.session.async_payment_succeeded', 'checkout.session.async_payment_failed'
+                    => $data['subscription'] ?? null,
                 'customer.subscription.created', 'customer.subscription.updated', 'customer.subscription.deleted' => $data['id'] ?? null,
                 'invoice.paid', 'invoice.payment_failed' => $data['parent']['subscription_details']['subscription'] ?? $data['subscription'] ?? null,
                 default => null,
@@ -150,7 +154,7 @@ enum TestGateway: string
         $request = Http::acceptJson()->withoutRedirecting()->connectTimeout(4)->timeout(10);
         if ($this === self::Stripe) {
             $url = 'https://api.stripe.com/v1/'.$endpoint;
-            $request->withToken($settings['key'])->asForm()->withHeader('Stripe-Version', '2025-03-31.basil');
+            $request->withToken($settings['key'])->asForm()->withHeader('Stripe-Version', self::STRIPE_API_VERSION);
         } else {
             $url = 'https://api.razorpay.com/v1/'.$endpoint;
             $request->withBasicAuth($settings['key'], $settings['secret']);
