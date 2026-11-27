@@ -4,6 +4,10 @@ return [
     'admin_ids' => array_values(array_filter(array_map('intval', preg_split('/[\s,]+/', (string) env('FRAMEKEEP_ADMIN_IDS', ''))))),
     'free_downloads' => 10,
     'offer' => ['id' => 'pro-annual', 'amount_minor' => 2000, 'currency' => 'USD', 'interval' => 'year'],
+    'deploy_webhook' => [
+        'secret' => env('FRAMEKEEP_DEPLOY_WEBHOOK_SECRET'),
+        'repository' => env('FRAMEKEEP_DEPLOY_REPOSITORY'),
+    ],
     'youtube_key' => env('YOUTUBE_API_KEY'),
     'instagram' => [
         'app_id' => env('INSTAGRAM_APP_ID'),

@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\AccountController;
 use App\Http\Controllers\BillingController;
+use App\Http\Controllers\DeployWebhookController;
 use App\Http\Controllers\DownloadController;
 use App\Http\Controllers\ExportController;
 use App\Http\Controllers\ImportController;
@@ -10,6 +11,7 @@ use Illuminate\Support\Facades\Route;
 
 Route::prefix('v1')->group(function (): void {
     Route::get('catalog', [BillingController::class, 'catalog'])->middleware('throttle:api')->name('catalog');
+    Route::post('webhooks/github', [DeployWebhookController::class, 'receive'])->middleware('throttle:api');
     Route::post('tokens', [AccountController::class, 'token'])->middleware('throttle:account');
     Route::post('tokens/register', [AccountController::class, 'registerToken'])->middleware('throttle:account');
 

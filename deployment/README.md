@@ -18,6 +18,14 @@ The release script installs pinned dependencies, runs migrations, builds caches,
 
 ## SSH deployment when the panel Git root is public
 
+### Signed GitHub webhook
+
+Use a private Git checkout of `prod` at `<release directory>/source`. Generate a random secret with at least 32 bytes of entropy from the server and add it to the private environment as `FRAMEKEEP_DEPLOY_WEBHOOK_SECRET`. Set `FRAMEKEEP_DEPLOY_REPOSITORY=abduttaiyabvaghela/framekeep`. After the initial release, add a GitHub repository webhook for push events with the JSON endpoint `https://framekeep.saifeewindows.com/api/v1/webhooks/github`, the same secret, and SSL verification enabled.
+
+Schedule `bash /absolute/framekeep/source/deployment/hostinger-webhook-release.sh /absolute/framekeep` once a minute. The endpoint verifies GitHub's signature and records a private deployment request. The cron job fetches `prod` from the configured Git remote, fast-forwards the private checkout, and verifies the active release after the switch. Check the GitHub delivery status and the `current` symlink after a test push. Use this method independently of the hPanel Git integration and SSH workflow.
+
+### GitHub Actions over SSH
+
 The GitHub `Deploy prod to Hostinger` workflow checks the app, then uses SSH to fetch the exact pushed revision in the private checkout and run the same release script. Configure the GitHub `production` environment with variables `HOSTINGER_HOST`, `HOSTINGER_PORT`, `HOSTINGER_USER`, `HOSTINGER_RELEASE_DIR` and secrets `HOSTINGER_SSH_KEY` and `HOSTINGER_KNOWN_HOSTS`. The production checkout needs access to the GitHub repository. For a private repository, use a repository-scoped read-only deploy key on Hostinger. Use a dedicated SSH key authorized on Hostinger for the workflow and verify the known-host entry through the hosting provider. Set the repository variable `FRAMEKEEP_SSH_DEPLOY=true` after staging verification to enable workflow releases. Run either native webhook publication or the SSH workflow for the same checkout.
 
 ## Capacity
