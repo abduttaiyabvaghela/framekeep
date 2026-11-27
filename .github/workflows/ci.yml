@@ -1,0 +1,40 @@
+name: Framekeep checks
+
+on:
+  pull_request:
+    branches: [dev, stage, prod]
+  push:
+    branches: [dev, stage, prod]
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    services:
+      mysql:
+        image: mysql:8.4
+        env:
+          MYSQL_ROOT_PASSWORD: framekeep-test
+          MYSQL_DATABASE: framekeep_test
+        ports:
+          - 3306:3306
+        options: --health-cmd="mysqladmin ping" --health-interval=5s --health-retries=12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          extensions: curl, dom, mbstring, pdo_mysql, pdo_sqlite, zip
+          coverage: none
+      - run: composer install --no-interaction --prefer-dist
+      - run: node --check public/assets/library.js
+      - run: vendor/bin/phpunit
+      - run: vendor/bin/phpunit
+        env:
+          DB_CONNECTION: mysql
+          DB_DATABASE: framekeep_test
+          DB_HOST: 127.0.0.1
+          DB_USERNAME: root
+          DB_PASSWORD: framekeep-test
