@@ -36,6 +36,8 @@ class TestPaymentTest extends TestCase
             ->assertOk()->assertJsonPath('mode', 'test');
         $this->postJson('/api/v1/checkout', ['plan' => 'pro-annual', 'gateway' => 'stripe'])->assertOk();
         Http::assertSentCount(2);
+        Http::assertSent(fn ($request) => str_ends_with($request->url(), '/checkout/sessions')
+            && str_contains($request->body(), 'adaptive_pricing%5Benabled%5D=false'));
         $this->getJson('/api/v1/me')->assertJsonPath('pro', false);
         $this->stripeEvent('checkout.session.completed', ['subscription' => 'sub_stripe'], 'wrong')->assertUnauthorized();
         $this->stripeEvent('checkout.session.completed', ['subscription' => 'sub_stripe'], 'whsec_teststripe1234')->assertOk();

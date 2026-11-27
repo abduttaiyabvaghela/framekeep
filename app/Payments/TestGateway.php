@@ -35,7 +35,7 @@ enum TestGateway: string
             $home = rtrim(config('app.url'), '/');
             $data = $this->api('checkout/sessions', [
                 'mode' => 'subscription', 'integration_identifier' => 'framekeep-yearly-qbfmzdjw',
-                'adaptive_pricing' => ['enabled' => false],
+                'adaptive_pricing' => ['enabled' => 'false'],
                 'customer_email' => $user->email, 'line_items' => [['price' => $price, 'quantity' => 1]],
                 'subscription_data' => ['metadata' => ['framekeep_checkout' => $checkout->id]],
                 'success_url' => $home.'/?payment=awaiting', 'cancel_url' => $home.'/?payment=cancelled',
