@@ -42,7 +42,9 @@ ln -s "$base/.env" "$target/.env"
 cd "$target"
 "$composer" install --no-interaction --no-dev --prefer-dist --optimize-autoloader
 "$php" artisan about --only=environment
-"$php" artisan migrate --force --isolated
+# The release flock also covers migrations. The configured database cache
+# cannot provide an Artisan mutex before its tables exist on the first release.
+"$php" artisan migrate --force
 "$php" artisan config:cache
 "$php" artisan route:cache
 "$php" artisan view:cache
