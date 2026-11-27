@@ -72,6 +72,8 @@ class LibraryTest extends TestCase
         $this->postJson('/api/v1/imports', ['platform' => 'youtube', 'source' => '@another'])
             ->assertForbidden();
         $this->postJson('/api/v1/exports', ['import_id' => $id])->assertForbidden();
+        $this->getJson('/api/v1/imports?platform=instagram')->assertOk()->assertJsonCount(0, 'data');
+        $this->getJson('/api/v1/imports?platform=youtube')->assertOk()->assertJsonPath('data.0.id', $id);
         $this->actingAs($this->user('other'))->getJson("/api/v1/imports/$id/items")->assertNotFound();
     }
 
@@ -94,7 +96,8 @@ class LibraryTest extends TestCase
             ]),
             'video.twimg.com/*' => fn () => Http::response('example-video', 200, ['Content-Type' => 'video/mp4', 'Content-Length' => '13']),
         ]);
-        $import = $this->postJson('/api/v1/imports', ['platform' => 'x', 'source' => '@example'])->assertAccepted()->json('id');
+        $import = $this->postJson('/api/v1/imports', ['platform' => 'x', 'source' => 'https://x.com/Example'])->assertAccepted()
+            ->assertJsonPath('source', 'example')->json('id');
         $item = $this->getJson("/api/v1/imports/$import/items")->assertOk()->assertJsonCount(2, 'data.0.qualities')
             ->assertJsonPath('data.0.qualities.1.label', '720p')->json('data.0.id');
         $this->postJson("/api/v1/media/$item/download", ['quality' => 1])->assertOk()->assertStreamedContent('example-video');
@@ -150,6 +153,7 @@ class LibraryTest extends TestCase
         $id = $this->postJson('/api/v1/imports', ['platform' => 'instagram_pro', 'source' => 'stories'])
             ->assertAccepted()->json('id');
         $this->getJson("/api/v1/imports/$id/items")->assertOk()->assertJsonPath('data.0.type', 'story');
+        $this->getJson('/api/v1/imports?platform=instagram')->assertOk()->assertJsonPath('data.0.id', $id);
         $this->deleteJson('/api/v1/session/instagram')->assertOk();
         $this->assertNull($row->refresh()->token);
         $this->assertDatabaseHas('media_imports', ['id' => $id]);

@@ -13,41 +13,45 @@
 <div class="layout">
     <aside class="sidebar">
         <a class="brand" href="{{ route('home') }}"><span class="brand-icon" aria-hidden="true">◎</span><span>Framekeep<small>MEDIA LIBRARY</small></span></a>
-        <nav class="workspace-nav" aria-label="Workspace">
-            <a href="#source-panel">Add a source</a>
-            <a href="#library-panel">Library</a>
+        <nav class="workspace-nav" aria-label="Platforms">
+            <button type="button" class="platform-tab" data-platform="instagram" aria-current="page"><span aria-hidden="true">◎</span>Instagram</button>
+            <button type="button" class="platform-tab" data-platform="x"><span aria-hidden="true">𝕏</span>X</button>
+            <button type="button" class="platform-tab" data-platform="pinterest"><span aria-hidden="true">P</span>Pinterest</button>
+            <button type="button" class="platform-tab" data-platform="youtube"><span aria-hidden="true">▶</span>YouTube</button>
         </nav>
     </aside>
-    <main>
-        <header class="top"><strong>Media library</strong><div><button id="plans" type="button" class="button subtle">Plans</button>
+    <main id="workspace" data-platform="instagram">
+        <header class="top"><strong id="platform-name">Instagram</strong><div><button id="plans" type="button" class="button subtle">Plans</button>
             <button id="account" type="button" class="button primary">Sign in</button></div></header>
         <div class="content">
             <section class="hero">
                 <div class="hero-copy">
-                    <h1>Keep the media you need</h1>
-                    <p>Find videos and images across platforms. Your library updates as each import runs.</p>
+                    <h1 id="platform-heading">Your Instagram library</h1>
+                    <p id="platform-description">Browse available public media or connect a professional account to import your own posts, reels, and active stories.</p>
                 </div>
                 <img class="library-hero-image" src="{{ asset('assets/sample/alpine.jpg') }}" alt="">
             </section>
             <section class="sources" id="source-panel" aria-labelledby="source-title">
-                <div class="source-head"><div><h2 id="source-title">Add a source</h2><p id="source-hint">Enter an Instagram username.</p></div></div>
+                <div class="source-head"><div><h2 id="source-title">Import from Instagram</h2><p id="source-hint">Enter a public username or a direct Instagram link.</p></div><span id="provider-status" class="provider-status" hidden></span></div>
+                <div id="instagram-actions" class="connection-card">
+                    <div><strong id="instagram-connection-title">Instagram account</strong><p id="instagram-connection-note">Connect your professional account to import your own media.</p></div>
+                    <button type="button" class="button subtle" id="instagram-connect" disabled>Connect Instagram</button>
+                    <button type="button" class="button subtle" id="instagram-disconnect" hidden>Disconnect</button>
+                </div>
                 <form id="source-form" class="source-row">
-                    <label class="source-input-group">Platform
-                        <select id="platform">
-                            <option value="instagram">Instagram</option>
-                            <option value="instagram_pro" id="instagram-pro-option" hidden>Connected Instagram</option>
-                            <option value="youtube">YouTube</option>
-                            <option value="x">X</option>
-                            <option value="pinterest">Pinterest</option>
+                    <label id="instagram-mode-group" class="source-input-group">Instagram source
+                        <select id="instagram-mode">
+                            <option value="instagram">Public profile or link</option>
+                            <option value="instagram_pro" id="instagram-pro-option" disabled>My connected account</option>
                         </select>
                     </label>
-                    <label class="source-input-group grow">Source
+                    <label class="source-input-group grow"><span id="source-label">Username or link</span>
                         <input id="source" autocomplete="off" placeholder="@username" required>
                     </label>
                     <label class="source-input-group grow" id="instagram-edge-group" hidden>Media
                         <select id="instagram-edge"><option value="media">Posts and reels</option><option value="stories">Active stories</option></select>
                     </label>
-                    <button class="button primary" type="submit">Fetch media</button>
+                    <button id="fetch-media" class="button primary" type="submit">Import media</button>
                 </form>
                 <div id="instagram-actions" hidden>
                     <button type="button" class="button subtle" id="instagram-connect">Connect Instagram</button>
@@ -97,7 +101,10 @@
         <button type="button" class="icon-button" data-close aria-label="Close">×</button></div>
     <ul><li>Import from multiple sources</li><li>Download selected files or an entire import as a ZIP</li></ul>
     <p id="checkout-status" class="form-status" role="status">Checkout is currently disabled.</p>
-    <div class="dialog-actions"><button id="checkout" class="button primary" type="button" hidden>Choose annual Pro</button></div>
+    <div class="dialog-actions" id="checkout-gateways" hidden>
+        <button class="button primary" type="button" data-gateway="stripe" hidden>Test with Stripe</button>
+        <button class="button subtle" type="button" data-gateway="razorpay" hidden>Test with Razorpay</button>
+    </div>
 </dialog>
 <p id="notice" class="notice" role="status" hidden></p>
 </body>

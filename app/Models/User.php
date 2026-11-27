@@ -22,7 +22,12 @@ class User extends Authenticatable
 
     public function hasPro(): bool
     {
-        return ProSubscription::whereBelongsTo($this)->where('paid_until', '>', now())->exists();
+        if (ProSubscription::whereBelongsTo($this)->where('paid_until', '>', now())->exists()) {
+            return true;
+        }
+
+        return config('test-payments.enabled')
+            && TestCheckout::where('user_id', $this->id)->where('paid_until', '>', now())->exists();
     }
 
     public function hasFullAccess(): bool

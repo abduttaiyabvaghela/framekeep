@@ -27,7 +27,7 @@ class InstagramConnectionController
         $request->session()->put('instagram_oauth', ['state' => $state, 'user_id' => $request->user()->id, 'until' => time() + 600]);
         $query = http_build_query([
             'client_id' => config('framekeep.instagram.app_id'), 'redirect_uri' => $this->redirectUri(),
-            'scope' => 'instagram_business_basic', 'response_type' => 'code', 'state' => $state,
+            'scope' => 'instagram_business_basic', 'response_type' => 'code', 'state' => $state, 'enable_fb_login' => 0,
         ], encoding_type: PHP_QUERY_RFC3986);
 
         return response()->json(['url' => 'https://www.instagram.com/oauth/authorize?'.$query])->header('Cache-Control', 'no-store');

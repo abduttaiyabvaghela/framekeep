@@ -23,11 +23,11 @@ In separate terminals run `php artisan queue:work --queue=imports` and `php arti
 | --- | --- |
 | Instagram | Public profile, post, reel or story link. Results depend on public data Instagram returns. Complete history, private profiles and active stories are not guaranteed. |
 | Connected Instagram | A professional account owner can authorize imports of their own posts, reels and active stories. Configure a Meta app, `INSTAGRAM_APP_ID`, `INSTAGRAM_SECRET`, `INSTAGRAM_GRAPH_VERSION`, and register `https://your-host/instagram/callback`. |
-| YouTube | Channel name, @handle or channel ID. Set `YOUTUBE_API_KEY` to paginate public uploads. The official API supplies watch links and metadata. |
-| X | Public @username with `X_BEARER_TOKEN`. Imports media from the available timeline, with MP4 variants when the API supplies them. |
+| YouTube | Channel name, @handle, ID or channel URL. Set `YOUTUBE_API_KEY` to paginate public uploads. The official API supplies watch links and metadata. |
+| X | Public @username or profile URL with `X_BEARER_TOKEN`. Imports media from the available timeline, with MP4 variants when the API supplies them. |
 | Pinterest | Public board ID in `PINTEREST_PUBLIC_BOARDS` with a scoped `PINTEREST_ACCESS_TOKEN`. Media availability depends on the Pins API response. |
 
-Free accounts can fetch one source and download ten unique media files per UTC day. Pro is USD $20 per year. Pro and admins can fetch multiple sources and export supported files to ZIP, subject to batch and size limits. Existing accounts keep their password hashes and configured admin IDs. Checkout is disabled. Admins have full access without a subscription.
+Free accounts can fetch one source and download ten unique media files per UTC day. Pro is USD $20 per year. Pro and admins can fetch multiple sources and export supported files to ZIP, subject to batch and size limits. Existing accounts keep their password hashes and configured admin IDs. Admins have full access without a subscription. Stripe and Razorpay test checkout can be enabled on a test deployment through [the sandbox setup](docs/test-payments.md). Checkout is disabled by default, and the code accepts test credentials only.
 
 ## Development and releases
 

@@ -19,7 +19,16 @@ class ImportController
 {
     public function index(Request $request): JsonResponse
     {
-        return response()->json(MediaImport::whereBelongsTo($request->user())->orderByDesc('id')->cursorPaginate(25));
+        $data = $request->validate(['platform' => ['nullable', Rule::enum(Platform::class)]]);
+        $query = MediaImport::whereBelongsTo($request->user());
+        if (isset($data['platform'])) {
+            $platform = $data['platform'];
+            $query->whereIn('platform', $platform === Platform::Instagram->value
+                ? [Platform::Instagram->value, Platform::InstagramPro->value]
+                : [$platform]);
+        }
+
+        return response()->json($query->orderByDesc('id')->cursorPaginate(25));
     }
 
     public function store(Request $request, Usage $usage): JsonResponse

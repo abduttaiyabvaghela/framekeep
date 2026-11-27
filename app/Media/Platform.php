@@ -26,6 +26,12 @@ enum Platform: string
     public function source(string $source): string
     {
         $source = trim($source);
+        if ($this === self::X && preg_match('~^https://(?:www\.)?(?:x\.com|twitter\.com)/([A-Za-z0-9_]{1,15})/?(?:[?#].*)?$~iD', $source, $match)) {
+            $source = $match[1];
+        }
+        if ($this === self::YouTube && preg_match('~^https://(?:www\.|m\.)?youtube\.com/(@[^/#?]+|channel/UC[A-Za-z0-9_-]{22})(?:/videos|/shorts|/streams)?/?(?:[?#].*)?$~iDu', $source, $match)) {
+            $source = rawurldecode(str_replace('channel/', '', $match[1]));
+        }
         $valid = match ($this) {
             self::Instagram => $this->instagramSource($source) !== null,
             self::InstagramPro => in_array($source, ['media', 'stories'], true),
@@ -36,10 +42,10 @@ enum Platform: string
         };
         if (! $valid) {
             throw \Illuminate\Validation\ValidationException::withMessages(['source' => match ($this) {
-                    self::Instagram => 'Enter a public Instagram username, post, reel, or story URL.',
-                    self::InstagramPro => 'Choose posts and reels or active stories.',
-                    self::X => 'Enter a valid public username.',
-                self::YouTube => 'Enter a channel name, channel ID, or @handle.',
+                self::Instagram => 'Enter a public Instagram username, post, reel, or story URL.',
+                self::InstagramPro => 'Choose posts and reels or active stories.',
+                self::X => 'Enter a valid public username or profile link.',
+                self::YouTube => 'Enter a channel name, channel ID, @handle, or channel link.',
                 self::Pinterest => 'Enter an approved public board ID.',
             }]);
         }

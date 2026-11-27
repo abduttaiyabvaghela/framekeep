@@ -12,6 +12,7 @@ use Illuminate\Support\Facades\Route;
 Route::prefix('v1')->group(function (): void {
     Route::get('catalog', [BillingController::class, 'catalog'])->middleware('throttle:api')->name('catalog');
     Route::post('webhooks/github', [DeployWebhookController::class, 'receive'])->middleware('throttle:api');
+    Route::post('webhooks/payments/{provider}', [BillingController::class, 'webhook'])->whereIn('provider', ['stripe', 'razorpay']);
     Route::post('tokens', [AccountController::class, 'token'])->middleware('throttle:account');
     Route::post('tokens/register', [AccountController::class, 'registerToken'])->middleware('throttle:account');
 

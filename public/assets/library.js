@@ -1,13 +1,13 @@
 const get = id => document.getElementById(id);
 const csrf = document.querySelector('meta[name="csrf-token"]');
+const pageQuery = new URLSearchParams(location.search);
 const platforms = {
-    instagram: ['@username or media URL', 'Import media that Instagram exposes publicly.'],
-    instagram_pro: ['', 'Import posts, reels or active stories from your connected professional account.'],
-    youtube: ['Channel name, @handle, or ID', 'Find public uploads and open them on YouTube.'],
-    x: ['@username', 'Import public posts with images and video.'],
-    pinterest: ['Board ID', 'Import pins from a configured public board.'],
+    instagram: {name: 'Instagram', heading: 'Your Instagram library', intro: 'Browse public media or import posts, reels, and active stories from your own professional account.', label: 'Username or link', placeholder: '@username or Instagram link', hint: 'Use a public username or a direct post, reel, or story link.', action: 'Import media', filters: ['photo', 'video', 'reel', 'story']},
+    x: {name: 'X', heading: 'Media from X profiles', intro: 'Browse public photos and videos. Choose from the available video qualities when downloading.', label: 'Public username or link', placeholder: '@username or profile link', hint: 'Enter the username or link of a public X profile.', action: 'Import profile', filters: ['photo', 'video']},
+    pinterest: {name: 'Pinterest', heading: 'Pins from public boards', intro: 'Browse images and videos from public boards available to the connected Pinterest API.', label: 'Public board ID', placeholder: 'Board ID', hint: 'Enter a board ID approved in the Pinterest connection settings.', action: 'Import board', filters: ['photo', 'video']},
+    youtube: {name: 'YouTube', heading: 'Explore channel uploads', intro: 'Find a channel and browse its public uploads. Select a video to watch on YouTube.', label: 'YouTube channel', placeholder: 'Channel name, @handle, or link', hint: 'Use the @handle or channel ID if several channels have the same name.', action: 'Find uploads', filters: []},
 };
-const state = {user: null, instagram: null, imports: new Map(), rows: [], selected: new Map(), qualities: new Map(), id: null, cursor: null, importsCursor: null, version: 0, registration: false, catalog: {}};
+const state = {user: null, platform: 'instagram', instagram: null, imports: new Map(), rows: [], selected: new Map(), qualities: new Map(), id: null, cursor: null, importsCursor: null, version: 0, registration: false, catalog: {}};
 
 async function request(path, method = 'GET', body) {
     const response = await fetch('/api/v1/' + path, {
@@ -36,21 +36,41 @@ function element(tag, text, className) {
 }
 
 function updateSource() {
-    const platform = get('platform').value;
-    const connected = platform === 'instagram_pro';
+    const platform = state.platform;
+    const screen = platforms[platform];
+    const instagram = platform === 'instagram';
+    const connected = instagram && get('instagram-mode').value === 'instagram_pro' && Boolean(state.instagram);
+    const ownerReady = state.catalog.instagram_pro?.available === true;
+    const available = state.catalog[platform]?.available;
     const input = get('source');
-    input.placeholder = platforms[platform][0];
+    input.placeholder = screen.placeholder;
     input.required = !connected;
     input.closest('label').hidden = connected;
     get('instagram-edge-group').hidden = !connected;
-    get('instagram-pro-option').hidden = !state.catalog.instagram_pro?.available;
-    get('instagram-actions').hidden = !connected || !state.catalog.instagram_pro?.available;
+    get('instagram-mode-group').hidden = !instagram;
+    get('instagram-pro-option').disabled = !state.instagram || !ownerReady;
+    if (!connected) get('instagram-mode').value = 'instagram';
+    get('instagram-actions').hidden = !instagram;
+    get('instagram-connect').disabled = !ownerReady;
     get('instagram-connect').hidden = Boolean(state.instagram);
     get('instagram-disconnect').hidden = !state.instagram;
-    get('source-hint').textContent = state.catalog[platform]?.available === false
-        ? 'This platform is awaiting configuration.'
-        : connected && state.instagram ? 'Connected as @' + state.instagram + '.'
-        : platforms[platform][1];
+    get('instagram-connection-title').textContent = state.instagram ? '@' + state.instagram : 'Instagram account';
+    get('instagram-connection-note').textContent = state.instagram
+        ? 'Your posts, reels, and active stories are available to import.'
+        : ownerReady ? 'Connect a professional account to import your own media.' : 'Professional account sign-in requires Meta app setup.';
+    get('workspace').dataset.platform = platform;
+    get('platform-name').textContent = screen.name;
+    get('platform-heading').textContent = screen.heading;
+    get('platform-description').textContent = screen.intro;
+    get('source-title').textContent = 'Import from ' + screen.name;
+    get('source-label').textContent = screen.label;
+    get('library-title').textContent = screen.name + ' library';
+    get('source-hint').textContent = connected ? 'Choose which of your Instagram media to import.' : screen.hint;
+    get('fetch-media').textContent = screen.action;
+    get('fetch-media').disabled = available === false;
+    show('provider-status', available === false ? 'API setup required' : available ? (instagram ? 'Public sources available' : 'API ready') : '');
+    get('filter').closest('label').hidden = screen.filters.length === 0;
+    for (const option of get('filter').options) option.hidden = Boolean(option.value) && !screen.filters.includes(option.value);
 }
 
 async function updateInstagram() {
@@ -58,6 +78,9 @@ async function updateInstagram() {
     const identity = user ? (await request('instagram/connection')).username : null;
     if (user === state.user) {
         state.instagram = identity;
+        if (identity && pageQuery.get('instagram') === 'connected' && state.catalog.instagram_pro?.available) {
+            get('instagram-mode').value = 'instagram_pro';
+        }
         updateSource();
     }
 }
@@ -89,6 +112,8 @@ function renderButtons() {
     get('select-visible').checked = visible.length > 0 && visible.every(row => state.selected.has(row.id));
     get('download-selected').disabled = !state.user?.full_access || !state.selected.size;
     const row = state.imports.get(state.id);
+    get('download-all').hidden = state.platform === 'youtube';
+    get('select-visible').closest('.selection-row').hidden = state.platform === 'youtube';
     get('download-all').disabled = !state.user?.full_access || row?.status !== 'completed' || row.platform === 'youtube';
 }
 
@@ -125,7 +150,18 @@ function mediaCard(row) {
     const info = element('div', '', 'card-info');
     info.append(title, element('small', row.type));
     card.append(thumbnail, info);
-    if (!row.qualities.length) return card;
+    if (!row.qualities.length) {
+        if (state.platform === 'youtube' && link) {
+            const watch = element('a', 'Watch on YouTube', 'button subtle');
+            watch.href = link;
+            watch.target = '_blank';
+            watch.rel = 'noopener noreferrer';
+            const actions = element('div', '', 'media-actions');
+            actions.append(watch);
+            card.append(actions);
+        }
+        return card;
+    }
 
     const controls = element('div', '', 'media-actions');
     const select = element('select', '', 'quality');
@@ -217,8 +253,11 @@ async function loadRows(append = false) {
 async function listImports(append = false) {
     if (!state.user) return;
     const user = state.user;
-    const page = await request('imports' + cursorQuery(append ? state.importsCursor : null));
-    if (user !== state.user) return;
+    const platform = state.platform;
+    const query = new URLSearchParams({platform});
+    if (append && state.importsCursor) query.set('cursor', state.importsCursor);
+    const page = await request('imports?' + query);
+    if (user !== state.user || platform !== state.platform) return;
     if (!append) state.imports.clear();
     for (const row of page.data) state.imports.set(row.id, row);
     state.importsCursor = page.next_cursor;
@@ -260,7 +299,24 @@ async function zip(selection) {
 }
 
 const report = error => show('notice', error.message);
-get('platform').addEventListener('change', updateSource);
+get('instagram-mode').addEventListener('change', updateSource);
+for (const tab of document.querySelectorAll('.platform-tab')) {
+    tab.addEventListener('click', () => {
+        if (state.platform === tab.dataset.platform) return;
+        document.querySelector('.platform-tab[aria-current]').removeAttribute('aria-current');
+        tab.setAttribute('aria-current', 'page');
+        state.version++;
+        Object.assign(state, {platform: tab.dataset.platform, id: null, rows: [], cursor: null, importsCursor: null});
+        state.imports.clear();
+        get('source').value = '';
+        get('filter').value = '';
+        show('source-result', '');
+        updateSource();
+        renderImports();
+        renderMedia();
+        listImports().catch(report);
+    });
+}
 get('account').addEventListener('click', () => { updateAccount(); get('account-dialog').showModal(); });
 get('plans').addEventListener('click', () => get('plans-dialog').showModal());
 for (const close of document.querySelectorAll('[data-close]')) close.onclick = () => close.closest('dialog').close();
@@ -307,9 +363,11 @@ get('source-form').onsubmit = async event => {
     const submit = event.submitter;
     submit.disabled = true;
     try {
-        const platform = get('platform').value;
+        const workspace = state.platform;
+        const platform = workspace === 'instagram' ? get('instagram-mode').value : workspace;
         const source = platform === 'instagram_pro' ? get('instagram-edge').value : get('source').value;
         const row = await request('imports', 'POST', {platform, source});
+        if (state.platform !== workspace) return;
         state.imports.set(row.id, row);
         state.id = row.id;
         state.rows = [];
@@ -319,7 +377,7 @@ get('source-form').onsubmit = async event => {
         renderMedia();
         await loadRows();
     } catch (error) { show('source-result', error.message); }
-    finally { submit.disabled = false; }
+    finally { submit.disabled = state.catalog[state.platform]?.available === false; }
 };
 get('imports').onchange = () => {
     state.id = Number(get('imports').value) || null;
@@ -350,23 +408,25 @@ get('instagram-disconnect').onclick = async () => {
     try { await request('session/instagram', 'DELETE'); await updateInstagram(); }
     catch (error) { show('source-result', error.message); }
 };
-get('checkout').onclick = async () => {
+for (const button of document.querySelectorAll('[data-gateway]')) button.onclick = async () => {
     if (!state.user) {
         get('plans-dialog').close();
         get('account').click();
         return;
     }
-    try { location.assign((await request('checkout', 'POST', {plan: 'pro-annual'})).url); }
+    button.disabled = true;
+    try { location.assign((await request('checkout', 'POST', {plan: 'pro-annual', gateway: button.dataset.gateway})).url); }
     catch (error) { show('checkout-status', error.message); }
+    finally { button.disabled = false; }
 };
 
 request('catalog').then(data => {
     state.catalog = Object.fromEntries(data.platforms.map(platform => [platform.id, platform]));
-    get('checkout').hidden = !data.checkout_enabled;
-    show('checkout-status', data.checkout_enabled ? '' : 'Checkout is currently disabled.');
-    const instagramStatus = new URLSearchParams(location.search).get('instagram');
+    get('checkout-gateways').hidden = !data.checkout_enabled;
+    for (const button of document.querySelectorAll('[data-gateway]')) button.hidden = !data.test_gateways?.includes(button.dataset.gateway);
+    show('checkout-status', data.checkout_enabled ? 'Test mode. Use test payment details.' : 'Checkout is currently disabled.');
+    const instagramStatus = pageQuery.get('instagram');
     if (instagramStatus && state.catalog.instagram_pro.available) {
-        get('platform').value = 'instagram_pro';
         const message = {
             connected: 'Instagram is connected.',
             cancelled: 'The connection was canceled.',
@@ -374,9 +434,12 @@ request('catalog').then(data => {
             failed: 'Instagram could not connect your account.',
         }[instagramStatus];
         if (message) show('source-result', message);
+        if (instagramStatus === 'connected' && state.instagram) get('instagram-mode').value = 'instagram_pro';
     }
     updateSource();
 }).catch(report);
+if (pageQuery.get('payment') === 'awaiting') show('notice', 'Test checkout returned. Pro access updates after the gateway confirms payment.');
+if (pageQuery.get('payment') === 'cancelled') show('notice', 'Test checkout was canceled.');
 request('me').then(async user => {
     state.user = user;
     updateAccount();
